@@ -194,7 +194,7 @@ $result_low_stock = $conn->query($sql_low_stock);
                         <tbody>
                             <tr>
                                 <td>
-                                    <img src="img/customer.png">
+                                    <img src="img/cutomer.png">
                                     <p>Sagar Navale</p>
                                 </td>
                                 <td>1100 RS</td>
@@ -202,7 +202,7 @@ $result_low_stock = $conn->query($sql_low_stock);
                             </tr>
                             <tr>
                                 <td>
-                                    <img src="img/customer.png">
+                                    <img src="img/cutomer.png">
                                     <p>Vishal Navale</p>
                                 </td>
                                 <td>2000 RS</td>
@@ -210,7 +210,7 @@ $result_low_stock = $conn->query($sql_low_stock);
                             </tr>
                             <tr>
                                 <td>
-                                    <img src="img/customer.png">
+                                    <img src="img/cutomer.png">
                                     <p>Bunny Vivek</p>
                                 </td>
                                 <td>250 RS</td>
@@ -218,7 +218,7 @@ $result_low_stock = $conn->query($sql_low_stock);
                             </tr>
                             <tr>
                                 <td>
-                                    <img src="img/customer.png">
+                                    <img src="img/cutomer.png">
                                     <p>Prashant Pekhale</p>
                                 </td>
                                 <td>7880 RS</td>
@@ -226,7 +226,7 @@ $result_low_stock = $conn->query($sql_low_stock);
                             </tr>
                             <tr>
                                 <td>
-                                    <img src="img/customer.png">
+                                    <img src="img/cutomer.png">
                                     <p>Rahul Navale</p>
                                 </td>
                                 <td>897 RS</td>
