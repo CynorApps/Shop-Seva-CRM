@@ -15,30 +15,18 @@ $product_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 // Initialize variables
 $product = null;
-$inventory = null;
 $errors = [];
 $success = '';
 
 if ($product_id > 0) {
     // Fetch product details
-    $sql_product = "SELECT * FROM products WHERE product_id = ?";
+    $sql_product = "SELECT * FROM products WHERE id = ?";
     $stmt_product = $conn->prepare($sql_product);
     $stmt_product->bind_param("i", $product_id);
     $stmt_product->execute();
     $result_product = $stmt_product->get_result();
     $product = $result_product->fetch_assoc();
-    $result_product->free();
     $stmt_product->close();
-
-    // Fetch inventory details
-    $sql_inventory = "SELECT * FROM inventory WHERE product_id = ?";
-    $stmt_inventory = $conn->prepare($sql_inventory);
-    $stmt_inventory->bind_param("i", $product_id);
-    $stmt_inventory->execute();
-    $result_inventory = $stmt_inventory->get_result();
-    $inventory = $result_inventory->fetch_assoc();
-    $result_inventory->free();
-    $stmt_inventory->close();
 
     if (!$product) {
         $errors[] = "Product not found.";
@@ -47,65 +35,50 @@ if ($product_id > 0) {
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $product_name = trim($_POST['product_name']);
+    $name = trim($_POST['name']);
     $description = trim($_POST['description']);
-    $unit_price = (float)$_POST['unit_price'];
-    $total_stock = (int)$_POST['total_stock'];
+    $price = (float)$_POST['price'];
+    $stock = (int)$_POST['stock'];
+    $sku = trim($_POST['sku']);
+    $tax_rate = (float)$_POST['tax_rate'];
 
     // Validation
-    if (empty($product_name)) {
+    if (empty($name)) {
         $errors[] = "Product name is required.";
     }
-    if ($unit_price <= 0) {
-        $errors[] = "Unit price must be greater than zero.";
+    if (empty($sku)) {
+        $errors[] = "SKU is required.";
     }
-    if ($total_stock < 0) {
-        $errors[] = "Total stock cannot be negative.";
+    if ($price <= 0) {
+        $errors[] = "Price must be greater than zero.";
+    }
+    if ($stock < 0) {
+        $errors[] = "Stock cannot be negative.";
     }
 
     if (empty($errors)) {
-        // Start a transaction
         $conn->begin_transaction();
-
         try {
             // Update product
-            $sql_update_product = "UPDATE products SET product_name = ?, description = ?, unit_price = ? WHERE product_id = ?";
+            $sql_update_product = "UPDATE products SET name = ?, sku = ?, price = ?, stock = ?, tax_rate = ?, description = ? WHERE id = ?";
             $stmt_update_product = $conn->prepare($sql_update_product);
-            $stmt_update_product->bind_param("ssdi", $product_name, $description, $unit_price, $product_id);
+            $stmt_update_product->bind_param("ssdidsi", $name, $sku, $price, $stock, $tax_rate, $description, $product_id);
             $stmt_update_product->execute();
             $stmt_update_product->close();
 
-            // Update inventory
-            $sql_update_inventory = "UPDATE inventory SET total_stock = ?, last_updated = NOW() WHERE product_id = ?";
-            $stmt_update_inventory = $conn->prepare($sql_update_inventory);
-            $stmt_update_inventory->bind_param("ii", $total_stock, $product_id);
-            $stmt_update_inventory->execute();
-            $stmt_update_inventory->close();
+            // Log activity
+            $user_id = $_SESSION['user']['id'];
+            $action = "Updated product: $name";
+            $sql_log = "INSERT INTO activity_logs (user_id, action, created_at) VALUES (?, ?, NOW())";
+            $stmt_log = $conn->prepare($sql_log);
+            $stmt_log->bind_param("is", $user_id, $action);
+            $stmt_log->execute();
+            $stmt_log->close();
 
-            // Commit transaction
             $conn->commit();
             $success = "Product updated successfully.";
             header("Location: products.php?message=Product+updated+successfully");
             exit();
-
-            // Refresh product and inventory data
-            $sql_product = "SELECT * FROM products WHERE product_id = ?";
-            $stmt_product = $conn->prepare($sql_product);
-            $stmt_product->bind_param("i", $product_id);
-            $stmt_product->execute();
-            $result_product = $stmt_product->get_result();
-            $product = $result_product->fetch_assoc();
-            $result_product->free();
-            $stmt_product->close();
-
-            $sql_inventory = "SELECT * FROM inventory WHERE product_id = ?";
-            $stmt_inventory = $conn->prepare($sql_inventory);
-            $stmt_inventory->bind_param("i", $product_id);
-            $stmt_inventory->execute();
-            $result_inventory = $stmt_inventory->get_result();
-            $inventory = $result_inventory->fetch_assoc();
-            $result_inventory->free();
-            $stmt_inventory->close();
         } catch (Exception $e) {
             $conn->rollback();
             $errors[] = "Failed to update product: " . $e->getMessage();
@@ -282,20 +255,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php if ($product): ?>
                     <form method="POST">
                         <div class="form-group">
-                            <label for="product_name">Product Name</label>
-                            <input type="text" id="product_name" name="product_name" value="<?php echo htmlspecialchars($product['product_name']); ?>" required>
+                            <label for="name">Product Name</label>
+                            <input type="text" id="name" name="name" value="<?php echo htmlspecialchars($product['name']); ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="sku">SKU</label>
+                            <input type="text" id="sku" name="sku" value="<?php echo htmlspecialchars($product['sku']); ?>" required>
                         </div>
                         <div class="form-group">
                             <label for="description">Description</label>
                             <textarea id="description" name="description"><?php echo htmlspecialchars($product['description']); ?></textarea>
                         </div>
                         <div class="form-group">
-                            <label for="unit_price">Unit Price</label>
-                            <input type="number" step="0.01" id="unit_price" name="unit_price" value="<?php echo htmlspecialchars($product['unit_price']); ?>" required>
+                            <label for="price">Price</label>
+                            <input type="number" step="0.01" id="price" name="price" value="<?php echo htmlspecialchars($product['price']); ?>" required>
                         </div>
                         <div class="form-group">
-                            <label for="total_stock">Total Stock</label>
-                            <input type="number" id="total_stock" name="total_stock" value="<?php echo htmlspecialchars($inventory['total_stock']); ?>" required>
+                            <label for="stock">Stock</label>
+                            <input type="number" id="stock" name="stock" value="<?php echo htmlspecialchars($product['stock']); ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="tax_rate">Tax Rate (%)</label>
+                            <input type="number" step="0.01" id="tax_rate" name="tax_rate" value="<?php echo htmlspecialchars($product['tax_rate']); ?>">
                         </div>
                         <div class="form-group">
                             <button type="submit">Update Product</button>

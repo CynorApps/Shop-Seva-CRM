@@ -14,10 +14,9 @@ $user_name = $_SESSION['user']['name'];
 require_once 'db.php';
 
 // Fetch products and inventory details
-$sql = "SELECT p.product_id, p.product_name, i.total_stock,
-               (SELECT SUM(h.stock_added) FROM inventory_history h WHERE h.product_id = p.product_id) AS initial_stock
-        FROM products p
-        LEFT JOIN inventory i ON p.product_id = i.product_id";
+$sql = "SELECT p.id, p.name, p.stock,
+               (SELECT SUM(pi.quantity) FROM purchase_items pi WHERE pi.product_id = p.id) AS initial_stock
+        FROM products p";
 $result = $conn->query($sql);
 ?>
 
@@ -39,47 +38,37 @@ $result = $conn->query($sql);
             margin: 5px;
             transition: background-color 0.3s ease;
         }
-
         .btn-edit button {
             background-color: #4CAF50;
             color: white;
         }
-
         .btn-edit button:hover {
             background-color: #45a049;
         }
-
         .btn-delete button {
             background-color: #f44336;
             color: white;
         }
-
         .btn-delete button:hover {
             background-color: #d32f2f;
         }
-
         .btn-add button {
             background-color: #2196F3;
             color: white;
         }
-
         .btn-add button:hover {
             background-color: #1976D2;
         }
-
         .low-stock {
-            background-color: #ffe6e6; /* Light red for low stock alert */
+            background-color: #ffe6e6;
         }
-
         .add-product {
             margin-bottom: 20px;
         }
-
         .success {
             color: green;
             margin-bottom: 10px;
         }
-
         .error {
             color: red;
             margin-bottom: 10px;
@@ -200,7 +189,6 @@ $result = $conn->query($sql);
                             <button>Add Product</button>
                         </a>
                     </div>
-                    <!-- Product table -->
                     <table>
                         <thead>
                             <tr>
@@ -213,21 +201,20 @@ $result = $conn->query($sql);
                             <?php
                             if ($result->num_rows > 0) {
                                 while ($row = $result->fetch_assoc()) {
-                                    // Low stock alert: highlight if total_stock <= 10% of initial_stock
-                                    $is_low_stock = $row['initial_stock'] && $row['total_stock'] <= 0.1 * $row['initial_stock'];
+                                    $is_low_stock = $row['initial_stock'] && $row['stock'] <= 0.1 * $row['initial_stock'];
                                     $row_class = $is_low_stock ? 'low-stock' : '';
                             ?>
                                     <tr class="<?php echo $row_class; ?>">
                                         <td>
                                             <img src="img/product.png" alt="Product">
-                                            <p><?php echo htmlspecialchars($row['product_name']); ?></p>
+                                            <p><?php echo htmlspecialchars($row['name']); ?></p>
                                         </td>
-                                        <td><?php echo htmlspecialchars($row['total_stock']); ?><?php echo $is_low_stock ? ' (Low Stock Alert)' : ''; ?></td>
+                                        <td><?php echo htmlspecialchars($row['stock']); ?><?php echo $is_low_stock ? ' (Low Stock Alert)' : ''; ?></td>
                                         <td>
-                                            <a href="edit_product.php?id=<?php echo $row['product_id']; ?>" class="btn btn-edit">
+                                            <a href="edit_product.php?id=<?php echo $row['id']; ?>" class="btn btn-edit">
                                                 <button>Edit</button>
                                             </a>
-                                            <a href="delete_product.php?id=<?php echo $row['product_id']; ?>" class="btn btn-delete" onclick="return confirm('Are you sure you want to delete this product?');">
+                                            <a href="delete_product.php?id=<?php echo $row['id']; ?>" class="btn btn-delete" onclick="return confirm('Are you sure you want to delete this product?');">
                                                 <button>Delete</button>
                                             </a>
                                         </td>
@@ -237,12 +224,10 @@ $result = $conn->query($sql);
                             } else {
                                 echo '<tr><td colspan="3">No products found.</td></tr>';
                             }
-                            $conn->close();
                             ?>
                         </tbody>
                     </table>
                 </div>
-            </}$
             </div>
         </main>
         <!-- MAIN -->
@@ -252,3 +237,6 @@ $result = $conn->query($sql);
     <script src="script.js"></script>
 </body>
 </html>
+<?php
+$conn->close();
+?>

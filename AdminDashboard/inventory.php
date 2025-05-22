@@ -18,23 +18,22 @@ $errors = [];
 $success = '';
 
 // Fetch products and inventory details
-$sql = "SELECT p.product_id, p.product_name, i.total_stock, 
-               (SELECT SUM(h.stock_added) FROM inventory_history h WHERE h.product_id = p.product_id) AS initial_stock
-        FROM products p
-        LEFT JOIN inventory i ON p.product_id = i.product_id";
+$sql = "SELECT p.id, p.name, p.stock, 
+               (SELECT SUM(pi.quantity) FROM purchase_items pi WHERE pi.product_id = p.id) AS initial_stock
+        FROM products p";
 $result = $conn->query($sql);
 
 // Handle update stock form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_stock'])) {
     $product_id = (int)$_POST['product_id'];
-    $total_stock = (int)$_POST['total_stock'];
+    $stock = (int)$_POST['stock'];
 
-    if ($total_stock < 0) {
-        $errors[] = "Total stock cannot be negative.";
+    if ($stock < 0) {
+        $errors[] = "Stock cannot be negative.";
     } else {
-        $sql_update = "UPDATE inventory SET total_stock = ?, last_updated = NOW() WHERE product_id = ?";
+        $sql_update = "UPDATE products SET stock = ?, created_at = NOW() WHERE id = ?";
         $stmt_update = $conn->prepare($sql_update);
-        $stmt_update->bind_param("ii", $total_stock, $product_id);
+        $stmt_update->bind_param("ii", $stock, $product_id);
         if ($stmt_update->execute()) {
             $success = "Stock updated successfully.";
         } else {
@@ -54,19 +53,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_stock'])) {
     } else {
         $conn->begin_transaction();
         try {
-            // Update total_stock
-            $sql_update = "UPDATE inventory SET total_stock = total_stock + ?, last_updated = NOW() WHERE product_id = ?";
+            // Update products stock
+            $sql_update = "UPDATE products SET stock = stock + ?, created_at = NOW() WHERE id = ?";
             $stmt_update = $conn->prepare($sql_update);
             $stmt_update->bind_param("ii", $stock_added, $product_id);
             $stmt_update->execute();
             $stmt_update->close();
 
-            // Log in inventory_history
-            $sql_history = "INSERT INTO inventory_history (product_id, stock_added, added_at) VALUES (?, ?, NOW())";
-            $stmt_history = $conn->prepare($sql_history);
-            $stmt_history->bind_param("ii", $product_id, $stock_added);
-            $stmt_history->execute();
-            $stmt_history->close();
+            // Insert into purchase_items (assuming this is how stock is added)
+            $sql_purchase = "INSERT INTO purchase_items (purchase_id, product_id, quantity, price) 
+                            VALUES ((SELECT id FROM purchases ORDER BY id DESC LIMIT 1), ?, ?, 0.00)";
+            $stmt_purchase = $conn->prepare($sql_purchase);
+            $stmt_purchase->bind_param("ii", $product_id, $stock_added);
+            $stmt_purchase->execute();
+            $stmt_purchase->close();
 
             $conn->commit();
             $success = "Stock added successfully.";
@@ -257,29 +257,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_stock'])) {
                             <?php
                             if ($result->num_rows > 0) {
                                 while ($row = $result->fetch_assoc()) {
-                                    $is_low_stock = $row['total_stock'] <= 0.1 * $row['initial_stock'];
+                                    $is_low_stock = $row['initial_stock'] && $row['stock'] <= 0.1 * $row['initial_stock'];
                                     $row_class = $is_low_stock ? 'low-stock' : '';
                             ?>
                                     <tr class="<?php echo $row_class; ?>">
                                         <td>
                                             <img src="img/product.png" alt="Product">
-                                            <p><?php echo htmlspecialchars($row['product_name']); ?></p>
+                                            <p><?php echo htmlspecialchars($row['name']); ?></p>
                                         </td>
-                                        <td><?php echo htmlspecialchars($row['total_stock']); ?></td>
-                                        <td><?php echo htmlspecialchars($row['initial_stock']); ?></td>
+                                        <td><?php echo htmlspecialchars($row['stock']); ?></td>
+                                        <td><?php echo htmlspecialchars($row['initial_stock'] ?: 0); ?></td>
                                         <td><?php echo $is_low_stock ? 'Low Stock Alert' : 'Normal'; ?></td>
                                         <td>
                                             <form method="POST">
-                                                <input type="hidden" name="product_id" value="<?php echo $row['product_id']; ?>">
+                                                <input type="hidden" name="product_id" value="<?php echo $row['id']; ?>">
                                                 <div class="form-group">
-                                                    <input type="number" name="total_stock" value="<?php echo $row['total_stock']; ?>" required>
+                                                    <input type="number" name="stock" value="<?php echo $row['stock']; ?>" required>
                                                     <button type="submit" name="update_stock" class="btn btn-update">Update</button>
                                                 </div>
                                             </form>
                                         </td>
                                         <td>
                                             <form method="POST">
-                                                <input type="hidden" name="product_id" value="<?php echo $row['product_id']; ?>">
+                                                <input type="hidden" name="product_id" value="<?php echo $row['id']; ?>">
                                                 <div class="form-group">
                                                     <input type="number" name="stock_added" placeholder="Enter stock to add" required>
                                                     <button type="submit" name="add_stock" class="btn btn-add">Add</button>
@@ -292,7 +292,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_stock'])) {
                             } else {
                                 echo '<tr><td colspan="6">No products found.</td></tr>';
                             }
-                            $conn->close();
                             ?>
                         </tbody>
                     </table>
@@ -306,3 +305,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_stock'])) {
     <script src="script.js"></script>
 </body>
 </html>
+<?php
+$conn->close();
+?>

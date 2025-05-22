@@ -15,56 +15,63 @@ $errors = [];
 $success = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $product_name = trim($_POST['product_name']);
+    $name = trim($_POST['name']);
     $description = trim($_POST['description']);
-    $unit_price = (float)$_POST['unit_price'];
-    $total_stock = (int)$_POST['total_stock'];
+    $price = (float)$_POST['price'];
+    $stock = (int)$_POST['stock'];
+    $sku = trim($_POST['sku']);
+    $tax_rate = (float)$_POST['tax_rate'];
 
     // Validation
-    if (empty($product_name)) {
+    if (empty($name)) {
         $errors[] = "Product name is required.";
     }
-    if ($unit_price <= 0) {
-        $errors[] = "Unit price must be greater than zero.";
+    if (empty($sku)) {
+        $errors[] = "SKU is required.";
     }
-    if ($total_stock < 0) {
-        $errors[] = "Total stock cannot be negative.";
+    if ($price <= 0) {
+        $errors[] = "Price must be greater than zero.";
+    }
+    if ($stock < 0) {
+        $errors[] = "Stock cannot be negative.";
     }
 
     if (empty($errors)) {
-        // Start a transaction
         $conn->begin_transaction();
-
         try {
             // Insert into products table
-            $sql_product = "INSERT INTO products (product_name, description, unit_price, created_at) VALUES (?, ?, ?, NOW())";
+            $sql_product = "INSERT INTO products (name, sku, price, stock, tax_rate, description, created_at) 
+                           VALUES (?, ?, ?, ?, ?, ?, NOW())";
             $stmt_product = $conn->prepare($sql_product);
-            $stmt_product->bind_param("ssd", $product_name, $description, $unit_price);
+            $stmt_product->bind_param("ssdids", $name, $sku, $price, $stock, $tax_rate, $description);
             $stmt_product->execute();
             $product_id = $conn->insert_id;
             $stmt_product->close();
 
-            // Insert into inventory table
-            $sql_inventory = "INSERT INTO inventory (product_id, total_stock, last_updated) VALUES (?, ?, NOW())";
-            $stmt_inventory = $conn->prepare($sql_inventory);
-            $stmt_inventory->bind_param("ii", $product_id, $total_stock);
-            $stmt_inventory->execute();
-            $stmt_inventory->close();
+            // Insert into purchase_items (assuming stock is added via a purchase)
+            if ($stock > 0) {
+                $sql_purchase = "INSERT INTO purchase_items (purchase_id, product_id, quantity, price) 
+                                VALUES ((SELECT id FROM purchases ORDER BY id DESC LIMIT 1), ?, ?, ?)";
+                $stmt_purchase = $conn->prepare($sql_purchase);
+                $stmt_purchase->bind_param("iid", $product_id, $stock, $price);
+                $stmt_purchase->execute();
+                $stmt_purchase->close();
+            }
 
-            // Log initial stock in inventory_history
-            $sql_history = "INSERT INTO inventory_history (product_id, stock_added, added_at) VALUES (?, ?, NOW())";
-            $stmt_history = $conn->prepare($sql_history);
-            $stmt_history->bind_param("ii", $product_id, $total_stock);
-            $stmt_history->execute();
-            $stmt_history->close();
+            // Log activity
+            $user_id = $_SESSION['user']['id'];
+            $action = "Added product: $name";
+            $sql_log = "INSERT INTO activity_logs (user_id, action, created_at) VALUES (?, ?, NOW())";
+            $stmt_log = $conn->prepare($sql_log);
+            $stmt_log->bind_param("is", $user_id, $action);
+            $stmt_log->execute();
+            $stmt_log->close();
 
-            // Commit transaction
             $conn->commit();
             $success = "Product added successfully.";
             header("Location: products.php?message=Product+added+successfully");
             exit();
         } catch (Exception $e) {
-            // Rollback transaction on error
             $conn->rollback();
             $errors[] = "Failed to add product: " . $e->getMessage();
         }
@@ -234,20 +241,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php endif; ?>
                 <form method="POST">
                     <div class="form-group">
-                        <label for="product_name">Product Name</label>
-                        <input type="text" id="product_name" name="product_name" value="<?php echo isset($product_name) ? htmlspecialchars($product_name) : ''; ?>" required>
+                        <label for="name">Product Name</label>
+                        <input type="text" id="name" name="name" value="<?php echo isset($name) ? htmlspecialchars($name) : ''; ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="sku">SKU</label>
+                        <input type="text" id="sku" name="sku" value="<?php echo isset($sku) ? htmlspecialchars($sku) : ''; ?>" required>
                     </div>
                     <div class="form-group">
                         <label for="description">Description</label>
                         <textarea id="description" name="description"><?php echo isset($description) ? htmlspecialchars($description) : ''; ?></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="unit_price">Unit Price</label>
-                        <input type="number" step="0.01" id="unit_price" name="unit_price" value="<?php echo isset($unit_price) ? htmlspecialchars($unit_price) : ''; ?>" required>
+                        <label for="price">Price</label>
+                        <input type="number" step="0.01" id="price" name="price" value="<?php echo isset($price) ? htmlspecialchars($price) : ''; ?>" required>
                     </div>
                     <div class="form-group">
-                        <label for="total_stock">Total Stock</label>
-                        <input type="number" id="total_stock" name="total_stock" value="<?php echo isset($total_stock) ? htmlspecialchars($total_stock) : ''; ?>" required>
+                        <label for="stock">Stock</label>
+                        <input type="number" id="stock" name="stock" value="<?php echo isset($stock) ? htmlspecialchars($stock) : ''; ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="tax_rate">Tax Rate (%)</label>
+                        <input type="number" step="0.01" id="tax_rate" name="tax_rate" value="<?php echo isset($tax_rate) ? htmlspecialchars($tax_rate) : '0.00'; ?>">
                     </div>
                     <div class="form-group">
                         <button type="submit">Add Product</button>
