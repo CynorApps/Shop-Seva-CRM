@@ -13,12 +13,69 @@ $user_name = $_SESSION['user']['name'];
 // Include database connection
 require_once 'db.php';
 
+// Initialize variables
+$errors = [];
+$success = '';
+
 // Fetch products and inventory details
-$sql = "SELECT p.product_id, p.product_name, i.total_stock,
+$sql = "SELECT p.product_id, p.product_name, i.total_stock, 
                (SELECT SUM(h.stock_added) FROM inventory_history h WHERE h.product_id = p.product_id) AS initial_stock
         FROM products p
         LEFT JOIN inventory i ON p.product_id = i.product_id";
 $result = $conn->query($sql);
+
+// Handle update stock form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_stock'])) {
+    $product_id = (int)$_POST['product_id'];
+    $total_stock = (int)$_POST['total_stock'];
+
+    if ($total_stock < 0) {
+        $errors[] = "Total stock cannot be negative.";
+    } else {
+        $sql_update = "UPDATE inventory SET total_stock = ?, last_updated = NOW() WHERE product_id = ?";
+        $stmt_update = $conn->prepare($sql_update);
+        $stmt_update->bind_param("ii", $total_stock, $product_id);
+        if ($stmt_update->execute()) {
+            $success = "Stock updated successfully.";
+        } else {
+            $errors[] = "Failed to update stock.";
+        }
+        $stmt_update->close();
+    }
+}
+
+// Handle add stock form submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_stock'])) {
+    $product_id = (int)$_POST['product_id'];
+    $stock_added = (int)$_POST['stock_added'];
+
+    if ($stock_added <= 0) {
+        $errors[] = "Stock to add must be greater than zero.";
+    } else {
+        $conn->begin_transaction();
+        try {
+            // Update total_stock
+            $sql_update = "UPDATE inventory SET total_stock = total_stock + ?, last_updated = NOW() WHERE product_id = ?";
+            $stmt_update = $conn->prepare($sql_update);
+            $stmt_update->bind_param("ii", $stock_added, $product_id);
+            $stmt_update->execute();
+            $stmt_update->close();
+
+            // Log in inventory_history
+            $sql_history = "INSERT INTO inventory_history (product_id, stock_added, added_at) VALUES (?, ?, NOW())";
+            $stmt_history = $conn->prepare($sql_history);
+            $stmt_history->bind_param("ii", $product_id, $stock_added);
+            $stmt_history->execute();
+            $stmt_history->close();
+
+            $conn->commit();
+            $success = "Stock added successfully.";
+        } catch (Exception $e) {
+            $conn->rollback();
+            $errors[] = "Failed to add stock: " . $e->getMessage();
+        }
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -28,7 +85,7 @@ $result = $conn->query($sql);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href='https://unpkg.com/boxicons@2.0.9/css/boxicons.min.css' rel='stylesheet'>
     <link rel="stylesheet" href="style.css">
-    <title>Shop-Seva - Products</title>
+    <title>Shop-Seva - Inventory</title>
     <style>
         .btn button {
             padding: 5px 5px;
@@ -39,47 +96,35 @@ $result = $conn->query($sql);
             margin: 5px;
             transition: background-color 0.3s ease;
         }
-
-        .btn-edit button {
+        .btn-update button {
             background-color: #4CAF50;
             color: white;
         }
-
-        .btn-edit button:hover {
+        .btn-update button:hover {
             background-color: #45a049;
         }
-
-        .btn-delete button {
-            background-color: #f44336;
-            color: white;
-        }
-
-        .btn-delete button:hover {
-            background-color: #d32f2f;
-        }
-
         .btn-add button {
             background-color: #2196F3;
             color: white;
         }
-
         .btn-add button:hover {
             background-color: #1976D2;
         }
-
         .low-stock {
-            background-color: #ffe6e6; /* Light red for low stock alert */
+            background-color: #ffe6e6;
         }
-
-        .add-product {
-            margin-bottom: 20px;
+        .form-group {
+            margin-bottom: 15px;
         }
-
+        .form-group input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
         .success {
             color: green;
             margin-bottom: 10px;
         }
-
         .error {
             color: red;
             margin-bottom: 10px;
@@ -106,13 +151,13 @@ $result = $conn->query($sql);
                     <span class="text">Team</span>
                 </a>
             </li>
-            <li class="active">
+            <li>
                 <a href="products.php">
                     <i class='bx bxs-shopping-bag-alt'></i>
                     <span class="text">Product</span>
                 </a>
             </li>
-            <li>
+            <li class="active">
                 <a href="inventory.php">
                     <i class='bx bxs-doughnut-chart'></i>
                     <span class="text">Inventory</span>
@@ -168,14 +213,14 @@ $result = $conn->query($sql);
         <main>
             <div class="head-title">
                 <div class="left">
-                    <h1>Products</h1>
+                    <h1>Inventory Management</h1>
                     <ul class="breadcrumb">
                         <li>
                             <a href="admin_dashboard.php">Dashboard</a>
                         </li>
                         <li><i class='bx bx-chevron-right'></i></li>
                         <li>
-                            <a class="active" href="#">Products</a>
+                            <a class="active" href="#">Inventory</a>
                         </li>
                     </ul>
                 </div>
@@ -183,38 +228,36 @@ $result = $conn->query($sql);
             <div class="table-data">
                 <div class="order">
                     <div class="head">
-                        <h3>Welcome to Product Section</h3>
+                        <h3>Manage Inventory</h3>
                     </div>
-                    <?php if (isset($_GET['message'])): ?>
-                        <div class="success">
-                            <?php echo htmlspecialchars($_GET['message']); ?>
-                        </div>
-                    <?php endif; ?>
-                    <?php if (isset($_GET['error'])): ?>
+                    <?php if (!empty($errors)): ?>
                         <div class="error">
-                            <?php echo htmlspecialchars($_GET['error']); ?>
+                            <?php foreach ($errors as $error): ?>
+                                <p><?php echo htmlspecialchars($error); ?></p>
+                            <?php endforeach; ?>
                         </div>
                     <?php endif; ?>
-                    <div class="add-product">
-                        <a href="add_product.php" class="btn btn-add">
-                            <button>Add Product</button>
-                        </a>
-                    </div>
-                    <!-- Product table -->
+                    <?php if ($success): ?>
+                        <div class="success">
+                            <p><?php echo htmlspecialchars($success); ?></p>
+                        </div>
+                    <?php endif; ?>
                     <table>
                         <thead>
                             <tr>
                                 <th>Product</th>
-                                <th>Available Stock</th>
-                                <th>Action</th>
+                                <th>Total Stock</th>
+                                <th>Initial Stock</th>
+                                <th>Status</th>
+                                <th>Update Stock</th>
+                                <th>Add Stock</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php
                             if ($result->num_rows > 0) {
                                 while ($row = $result->fetch_assoc()) {
-                                    // Low stock alert: highlight if total_stock <= 10% of initial_stock
-                                    $is_low_stock = $row['initial_stock'] && $row['total_stock'] <= 0.1 * $row['initial_stock'];
+                                    $is_low_stock = $row['total_stock'] <= 0.1 * $row['initial_stock'];
                                     $row_class = $is_low_stock ? 'low-stock' : '';
                             ?>
                                     <tr class="<?php echo $row_class; ?>">
@@ -222,27 +265,38 @@ $result = $conn->query($sql);
                                             <img src="img/product.png" alt="Product">
                                             <p><?php echo htmlspecialchars($row['product_name']); ?></p>
                                         </td>
-                                        <td><?php echo htmlspecialchars($row['total_stock']); ?><?php echo $is_low_stock ? ' (Low Stock Alert)' : ''; ?></td>
+                                        <td><?php echo htmlspecialchars($row['total_stock']); ?></td>
+                                        <td><?php echo htmlspecialchars($row['initial_stock']); ?></td>
+                                        <td><?php echo $is_low_stock ? 'Low Stock Alert' : 'Normal'; ?></td>
                                         <td>
-                                            <a href="edit_product.php?id=<?php echo $row['product_id']; ?>" class="btn btn-edit">
-                                                <button>Edit</button>
-                                            </a>
-                                            <a href="delete_product.php?id=<?php echo $row['product_id']; ?>" class="btn btn-delete" onclick="return confirm('Are you sure you want to delete this product?');">
-                                                <button>Delete</button>
-                                            </a>
+                                            <form method="POST">
+                                                <input type="hidden" name="product_id" value="<?php echo $row['product_id']; ?>">
+                                                <div class="form-group">
+                                                    <input type="number" name="total_stock" value="<?php echo $row['total_stock']; ?>" required>
+                                                    <button type="submit" name="update_stock" class="btn btn-update">Update</button>
+                                                </div>
+                                            </form>
+                                        </td>
+                                        <td>
+                                            <form method="POST">
+                                                <input type="hidden" name="product_id" value="<?php echo $row['product_id']; ?>">
+                                                <div class="form-group">
+                                                    <input type="number" name="stock_added" placeholder="Enter stock to add" required>
+                                                    <button type="submit" name="add_stock" class="btn btn-add">Add</button>
+                                                </div>
+                                            </form>
                                         </td>
                                     </tr>
                             <?php
                                 }
                             } else {
-                                echo '<tr><td colspan="3">No products found.</td></tr>';
+                                echo '<tr><td colspan="6">No products found.</td></tr>';
                             }
                             $conn->close();
                             ?>
                         </tbody>
                     </table>
                 </div>
-            </}$
             </div>
         </main>
         <!-- MAIN -->
