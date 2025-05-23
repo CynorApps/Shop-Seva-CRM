@@ -13,21 +13,18 @@ $user_name = $_SESSION['user']['name'];
 // Include database connection
 require_once 'db.php';
 
-// Check if database connection is successful
-if (!$conn) {
-    die("Database connection failed: " . mysqli_connect_error());
-}
-
 // Initialize variables
 $search_customer = $_GET['search_customer'] ?? '';
 $search_product = $_GET['search_product'] ?? '';
 
-// Build query
+// Fetch bills (join with users table to get worker name)
 $sql_bills = "SELECT s.id, s.customer_name, s.total, s.created_at, 
-                     GROUP_CONCAT(p.name SEPARATOR ', ') AS product_names
+                     GROUP_CONCAT(p.name SEPARATOR ', ') AS product_names,
+                     u.name AS worker_name
               FROM sales s
               JOIN sale_items si ON s.id = si.sale_id
               JOIN products p ON si.product_id = p.id
+              JOIN users u ON s.user_id = u.id
               WHERE 1=1";
 $params = [];
 $types = '';
@@ -45,26 +42,17 @@ if (!empty($search_product)) {
 
 $sql_bills .= " GROUP BY s.id ORDER BY s.created_at DESC";
 
-// Prepare the statement with error handling
 $stmt_bills = $conn->prepare($sql_bills);
 if ($stmt_bills === false) {
     die("Prepare failed: " . $conn->error);
 }
-
 if (!empty($params)) {
-    if (!$stmt_bills->bind_param($types, ...$params)) {
-        die("Binding parameters failed: " . $stmt_bills->error);
-    }
+    $stmt_bills->bind_param($types, ...$params);
 }
-
 if (!$stmt_bills->execute()) {
     die("Execute failed: " . $stmt_bills->error);
 }
-
 $result_bills = $stmt_bills->get_result();
-if ($result_bills === false) {
-    die("Getting result failed: " . $stmt_bills->error);
-}
 ?>
 
 <!DOCTYPE html>
@@ -77,7 +65,7 @@ if ($result_bills === false) {
     <title>Shop-Seva - Billing History</title>
     <style>
         .form-container {
-            max-width: 800px;
+            max-width: 1000px;
             margin: 20px auto;
             padding: 20px;
             background: #f9f9f9;
@@ -85,19 +73,6 @@ if ($result_bills === false) {
         }
         .form-container h2 {
             margin-bottom: 20px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
         }
         .search-form {
             display: flex;
@@ -108,6 +83,9 @@ if ($result_bills === false) {
         .search-form input {
             flex: 1;
             min-width: 200px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
         }
         .search-form button {
             padding: 10px 20px;
@@ -145,6 +123,7 @@ if ($result_bills === false) {
         .table-container table td a {
             color: #4CAF50;
             text-decoration: none;
+            margin-right: 10px;
         }
         .table-container table td a:hover {
             color: #45a049;
@@ -169,8 +148,12 @@ if ($result_bills === false) {
             <li><a href="#"><i class='bx bxs-message-dots'></i><span class="text">Message</span></a></li>
         </ul>
         <ul class="side-menu">
-            <li><a href="#"><i class='bx bxs-cog'></i><span class="text">Settings</span></a></li>
-            <li><a href="../logout.php" class="logout"><i class='bx bxs-log-out-circle'></i><span class="text">Logout</span></a></li>
+            <li>
+                <a href="../logout.php" class="logout">
+                    <i class='bx bxs-log-out-circle'></i>
+                    <span class="text">Logout</span>
+                </a>
+            </li>
         </ul>
     </section>
     <!-- SIDEBAR -->
@@ -201,12 +184,13 @@ if ($result_bills === false) {
                 <div class="left">
                     <h1>Billing History</h1>
                     <ul class="breadcrumb">
-                        <li><a href="admin_dashboard.php">Dashboard</a></li>
+                        <li><a href="#">Dashboard</a></li>
                         <li><i class='bx bx-chevron-right'></i></li>
                         <li><a class="active" href="#">Billing History</a></li>
                     </ul>
                 </div>
             </div>
+
             <div class="form-container">
                 <h2>Bill Records</h2>
                 <form method="GET" class="search-form">
@@ -224,6 +208,7 @@ if ($result_bills === false) {
                             <tr>
                                 <th>Date</th>
                                 <th>Customer Name</th>
+                                <th>Worker Name</th>
                                 <th>Products</th>
                                 <th>Total (₹)</th>
                                 <th>Action</th>
@@ -235,15 +220,17 @@ if ($result_bills === false) {
                                     <tr>
                                         <td><?php echo htmlspecialchars(date('d-m-Y H:i', strtotime($bill['created_at']))); ?></td>
                                         <td><?php echo htmlspecialchars($bill['customer_name']); ?></td>
+                                        <td><?php echo htmlspecialchars($bill['worker_name']); ?></td>
                                         <td><?php echo htmlspecialchars($bill['product_names']); ?></td>
                                         <td><?php echo number_format($bill['total'], 2); ?></td>
                                         <td>
+                                            <a href="edit_bill.php?sale_id=<?php echo $bill['id']; ?>">Edit</a>
                                             <a href="generate_bill_pdf.php?sale_id=<?php echo $bill['id']; ?>">View PDF</a>
                                         </td>
                                     </tr>
                                 <?php endwhile; ?>
                             <?php else: ?>
-                                <tr><td colspan="5">No bills found.</td></tr>
+                                <tr><td colspan="6">No bills found.</td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
@@ -253,8 +240,6 @@ if ($result_bills === false) {
         <!-- MAIN -->
     </section>
     <!-- CONTENT -->
-
-    <script src="script.js"></script>
 </body>
 </html>
 <?php

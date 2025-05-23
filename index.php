@@ -47,7 +47,7 @@ if (isset($_POST['login'])) {
             if ($user['role'] === 'Admin') {
                 header("Location: AdminDashboard/admin_dashboard.php");
             } else {
-                header("Location: worker_dashboard.php");
+                header("Location: WorkerDashboard/WorkerDashboard.php");
             }
             exit();
         } else {
