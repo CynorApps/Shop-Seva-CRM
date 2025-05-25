@@ -212,21 +212,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_backup'])) {
 <body>
     <!-- SIDEBAR -->
     <section id="sidebar">
-        <a href="#" class="brand">
-            <i class='bx bxs-smile'></i>
-            <span class="text">Shop-Seva</span>
+        <a href="https://cynortech.in/" class="brand" style="margin-top: 11px; margin-left: 11px; pading:8px; " >
+            <img src="./img/crm.png" alt="CYNOR Logo" style="height: 30px; width: auto; margin-right: 19px; margin-left: 11px; ">
+            <span class="text" style="font-size: 18px; font-weight: bold;">
+                Shop-Seva<br>
+                <span style="font-size: 10px; color: gray; font-weight: normal;">Powered by CYNOR</span>
+            </span>
         </a>
         <ul class="side-menu top">
-            <li><a href="admin_dashboard.php"><i class='bx bxs-dashboard'></i><span class="text">Dashboard</span></a></li>
-            <li><a href="#"><i class='bx bxs-group'></i><span class="text">Staff</span></a></li>
-            <li><a href="products.php"><i class='bx bxs-shopping-bag-alt'></i><span class="text">Product</span></a></li>
-            <li><a href="inventory.php"><i class='bx bxs-doughnut-chart'></i><span class="text">Inventory</span></a></li>
-            <li><a href="billing.php"><i class='bx bxs-receipt'></i><span class="text">Billing</span></a></li>
-            <li><a href="billing_history.php"><i class='bx bxs-history'></i><span class="text">Billing History</span></a></li>
-            <li><a href="#"><i class='bx bxs-message-dots'></i><span class="text">Message</span></a></li>
-            <!-- Backup option will be added here by you -->
-        </ul>
-        <ul class="side-menu">
+            <li>
+                <a href="admin_dashboard.php">
+                    <i class='bx bxs-dashboard'></i>
+                    <span class="text">Dashboard</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="staff.php">
+                    <i class='bx bxs-group'></i>
+                    <span class="text">Staff</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="products.php">
+                    <i class='bx bxs-shopping-bag-alt'></i>
+                    <span class="text">Product</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="inventory.php">
+                    <i class='bx bxs-doughnut-chart'></i>
+                    <span class="text">Inventory</span>
+                </a>
+            </li>
+            
+            <li>
+                <a href="billing.php">
+                    <i class='bx bxs-receipt'></i>
+                    <span class="text">Billing</span>
+                </a>
+            </li>
+            <li>
+                <a href="billing_history.php">
+                    <i class='bx bxs-receipt'></i>
+                    <span class="text">Billing History</span>
+                </a>
+            </li>
+            <li>
+                <a href="performance.php">
+                    <i class='bx bx-bar-chart-alt-2'></i>
+                    <span class="text">Performance</span>
+                </a>
+            </li>
+            <li class="active">
+                <a href="backup.php">
+                    <i class='bx bxs-data'></i>
+                    <span class="text">Backup</span>
+                </a>
+            </li>
+            <li>
+                <a href="logs.php">
+                    <i class='bx bxs-time'></i>
+                    <span class="text">Logs</span>
+                </a>
+            </li>
+            <li>
+                <a href="contact.php">
+                    <i class='bx bxs-message-dots'></i>
+                    <span class="text">Contact US</span>
+                </a>
+            </li>
             <li>
                 <a href="../logout.php" class="logout">
                     <i class='bx bxs-log-out-circle'></i>
@@ -244,9 +301,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_backup'])) {
             <i class='bx bx-menu'></i>
             <form action="#">
                 <div class="form-input">
-                    <input type="search" placeholder="Search...">
-                    <button type="submit" class="search-btn"><i class='bx bx-search'></i></button>
-                </div>
+                <button type="submit" class="search-btn">
+                    <i class='bx bx-briefcase'></i>
+                </button>
+            </div>
             </form>
             <span class="text"><?php echo htmlspecialchars($_SESSION['user']['name']); ?></span>
             <input type="checkbox" id="switch-mode" hidden>
@@ -324,6 +382,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_backup'])) {
         <!-- MAIN -->
     </section>
     <!-- CONTENT -->
+     <script src="script.js"></script>
 </body>
 </html>
 <?php

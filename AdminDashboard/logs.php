@@ -1,23 +1,35 @@
 <?php
 session_start();
 
+// Enable error reporting for debugging
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 // Check if user is logged in and is an Admin
 if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'Admin') {
     header("Location: ../index.php");
     exit();
 }
 
-// Get the logged-in user's name
-$user_name = $_SESSION['user']['name'];
-
 // Include database connection
 require_once 'db.php';
 
-// Fetch products and inventory details
-$sql = "SELECT p.id, p.name, p.stock,
-               (SELECT SUM(pi.quantity) FROM purchase_items pi WHERE pi.product_id = p.id) AS initial_stock
-        FROM products p";
+// Fetch activity logs from the database using LEFT JOIN (without description)
+$sql = "SELECT al.id, al.user_id, u.name AS user_name, al.action, al.created_at 
+        FROM activity_logs al 
+        LEFT JOIN users u ON al.user_id = u.id 
+        ORDER BY al.created_at DESC";
 $result = $conn->query($sql);
+$logs = [];
+if ($result) {
+    while ($row = $result->fetch_assoc()) {
+        $logs[] = $row;
+    }
+    $result->free();
+} else {
+    echo "Error executing query: " . $conn->error;
+}
 ?>
 
 <!DOCTYPE html>
@@ -27,51 +39,76 @@ $result = $conn->query($sql);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href='https://unpkg.com/boxicons@2.0.9/css/boxicons.min.css' rel='stylesheet'>
     <link rel="stylesheet" href="style.css">
-    <title>Shop-Seva - Products</title>
+    <title>Shop-Seva - Activity Logs</title>
     <style>
-        .btn button {
-            padding: 5px 5px;
-            font-size: 16px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 5px;
-            transition: background-color 0.3s ease;
+        .logs-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
+            overflow-x: auto;
         }
-        .btn-edit button {
+        .logs-table th, .logs-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            box-sizing: border-box;
+        }
+        .logs-table th {
             background-color: #4CAF50;
-            color: white;
+            color: #fff;
+            font-weight: 600;
         }
-        .btn-edit button:hover {
-            background-color: #45a049;
+        .logs-table tr:hover {
+            background-color: #f5f5f5;
         }
-        .btn-delete button {
-            background-color: #f44336;
-            color: white;
+        .logs-table td {
+            color: #333;
         }
-        .btn-delete button:hover {
-            background-color: #d32f2f;
-        }
-        .btn-add button {
-            background-color: #2196F3;
-            color: white;
-        }
-        .btn-add button:hover {
-            background-color: #1976D2;
-        }
-        .low-stock {
-            background-color: #ffe6e6;
-        }
-        .add-product {
-            margin-bottom: 20px;
-        }
-        .success {
-            color: green;
-            margin-bottom: 10px;
-        }
-        .error {
-            color: red;
-            margin-bottom: 10px;
+        /* Responsive Design for Mobile */
+        @media (max-width: 768px) {
+            .logs-table {
+                width: 100%;
+                display: block !important;
+                overflow-x: hidden !important;
+            }
+            .logs-table thead {
+                display: none !important;
+            }
+            .logs-table tbody {
+                display: block !important;
+            }
+            .logs-table tr {
+                display: block !important;
+                margin-bottom: 20px !important;
+                border-bottom: 2px solid #ddd !important;
+                padding: 10px 0 !important;
+            }
+            .logs-table td {
+                display: block !important;
+                text-align: right !important;
+                padding: 8px 15px !important;
+                position: relative !important;
+                border: none !important;
+                font-size: 14px !important;
+            }
+            .logs-table td:before {
+                content: attr(data-label) !important;
+                position: absolute !important;
+                left: 15px !important;
+                width: 40% !important;
+                padding-right: 10px !important;
+                font-weight: bold !important;
+                text-align: left !important;
+                color: #4CAF50 !important;
+            }
+            .logs-table td[colspan] {
+                text-align: center !important;
+                padding: 15px !important;
+            }
         }
     </style>
 </head>
@@ -100,7 +137,7 @@ $result = $conn->query($sql);
                 </a>
             </li>
 
-            <li class="active">
+            <li>
                 <a href="products.php">
                     <i class='bx bxs-shopping-bag-alt'></i>
                     <span class="text">Product</span>
@@ -138,7 +175,7 @@ $result = $conn->query($sql);
                     <span class="text">Backup</span>
                 </a>
             </li>
-            <li>
+            <li class="active">
                 <a href="logs.php">
                     <i class='bx bxs-time'></i>
                     <span class="text">Logs</span>
@@ -172,9 +209,7 @@ $result = $conn->query($sql);
                 </button>
             </div>
             </form>
-            <span class="text">
-                <?php echo htmlspecialchars($user_name); ?>
-            </span>
+            <span class="text"><?php echo htmlspecialchars($_SESSION['user']['name']); ?></span>
             <input type="checkbox" id="switch-mode" hidden>
             <label for="switch-mode" class="switch-mode"></label>
             <a href="#" class="profile">
@@ -187,74 +222,40 @@ $result = $conn->query($sql);
         <main>
             <div class="head-title">
                 <div class="left">
-                    <h1>Products</h1>
+                    <h1>Activity Logs</h1>
                     <ul class="breadcrumb">
-                        <li>
-                            <a href="admin_dashboard.php">Dashboard</a>
-                        </li>
+                        <li><a href="#">Dashboard</a></li>
                         <li><i class='bx bx-chevron-right'></i></li>
-                        <li>
-                            <a class="active" href="#">Products</a>
-                        </li>
+                        <li><a class="active" href="#">Logs</a></li>
                     </ul>
                 </div>
             </div>
+
+            <!-- Logs Table -->
             <div class="table-data">
                 <div class="order">
-                    <div class="head">
-                        <h3>Welcome to Product Section</h3>
-                    </div>
-                    <?php if (isset($_GET['message'])): ?>
-                        <div class="success">
-                            <?php echo htmlspecialchars($_GET['message']); ?>
-                        </div>
-                    <?php endif; ?>
-                    <?php if (isset($_GET['error'])): ?>
-                        <div class="error">
-                            <?php echo htmlspecialchars($_GET['error']); ?>
-                        </div>
-                    <?php endif; ?>
-                    <div class="add-product">
-                        <a href="add_product.php" class="btn btn-add">
-                            <button>Add Product</button>
-                        </a>
-                    </div>
-                    <table>
+                    <table class="logs-table">
                         <thead>
                             <tr>
-                                <th>Product</th>
-                                <th>Available Stock</th>
+                                <th>User</th>
                                 <th>Action</th>
+                                <th>Timestamp</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php
-                            if ($result->num_rows > 0) {
-                                while ($row = $result->fetch_assoc()) {
-                                    $is_low_stock = $row['initial_stock'] && $row['stock'] <= 0.1 * $row['initial_stock'];
-                                    $row_class = $is_low_stock ? 'low-stock' : '';
-                            ?>
-                                    <tr class="<?php echo $row_class; ?>">
-                                        <td>
-                                            <img src="img/product.png" alt="Product">
-                                            <p><?php echo htmlspecialchars($row['name']); ?></p>
-                                        </td>
-                                        <td><?php echo htmlspecialchars($row['stock']); ?><?php echo $is_low_stock ? ' (Low Stock Alert)' : ''; ?></td>
-                                        <td>
-                                            <a href="edit_product.php?id=<?php echo $row['id']; ?>" class="btn btn-edit">
-                                                <button>Edit</button>
-                                            </a>
-                                            <a href="delete_product.php?id=<?php echo $row['id']; ?>" class="btn btn-delete" onclick="return confirm('Are you sure you want to delete this product?');">
-                                                <button>Delete</button>
-                                            </a>
-                                        </td>
+                            <?php if (empty($logs)): ?>
+                                <tr>
+                                    <td colspan="3" style="text-align: center;">No logs found.</td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($logs as $log): ?>
+                                    <tr>
+                                        <td data-label="User"><?php echo htmlspecialchars($log['user_name'] ?? 'Unknown User'); ?></td>
+                                        <td data-label="Action"><?php echo htmlspecialchars($log['action']); ?></td>
+                                        <td data-label="Timestamp"><?php echo date('d/m/Y H:i:s', strtotime($log['created_at'])); ?></td>
                                     </tr>
-                            <?php
-                                }
-                            } else {
-                                echo '<tr><td colspan="3">No products found.</td></tr>';
-                            }
-                            ?>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -263,8 +264,7 @@ $result = $conn->query($sql);
         <!-- MAIN -->
     </section>
     <!-- CONTENT -->
-
-    <script src="script.js"></script>
+     <script src="script.js"></script>
 </body>
 </html>
 <?php

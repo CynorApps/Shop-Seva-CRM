@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 25, 2025 at 07:09 PM
+-- Generation Time: May 22, 2025 at 06:36 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -39,14 +39,24 @@ CREATE TABLE `activity_logs` (
 --
 
 INSERT INTO `activity_logs` (`id`, `user_id`, `action`, `created_at`) VALUES
-(1, 1, 'Added product: Vivo T3 5G', '2025-05-25 16:53:51'),
-(2, 1, 'Added product: Samsung S25', '2025-05-25 16:54:55'),
-(3, 1, 'Added product: Samsung S25', '2025-05-25 16:55:36'),
-(4, 1, 'Added product: realme 14x 5G', '2025-05-25 16:56:55'),
-(5, 1, 'Added product: OPPO A3 5G', '2025-05-25 16:57:45'),
-(6, 1, 'Added product: Motorola G85 5G', '2025-05-25 16:58:34'),
-(7, 1, 'Added product: Boult X1 Wired Headset', '2025-05-25 17:00:06'),
-(8, 1, 'Generated bill for customer: Datta Wagh (Sale ID: 1)', '2025-05-25 17:03:33');
+(1, 1, 'Login', '2025-05-15 14:25:46'),
+(2, 3, 'Login', '2025-05-15 14:27:17'),
+(3, 1, 'Login', '2025-05-15 14:27:28'),
+(4, 1, 'Login', '2025-05-16 09:22:51'),
+(5, 1, 'Login', '2025-05-17 02:49:15'),
+(6, 1, 'Login', '2025-05-17 02:57:59'),
+(7, 1, 'Added product: Redmi Note 13', '2025-05-17 03:13:11'),
+(8, 1, 'Added product: Om Thorata', '2025-05-17 03:24:32'),
+(9, 1, 'Login', '2025-05-20 15:00:12'),
+(10, 1, 'Added product: Om Thorat', '2025-05-20 15:01:08'),
+(11, 1, 'Login', '2025-05-20 15:46:42'),
+(12, 1, 'Login', '2025-05-21 14:15:55'),
+(13, 1, 'Added product: Redmi Note 13', '2025-05-22 14:52:39'),
+(14, 1, 'Updated product: Redmi Note 13', '2025-05-22 14:53:21'),
+(15, 1, 'Added product: V TV', '2025-05-22 14:55:26'),
+(16, 1, 'Generated bill for customer: Anant Gadakh (Sale ID: 1)', '2025-05-22 16:00:00'),
+(17, 1, 'Generated bill for customer: Anant Gadakh (Sale ID: 2)', '2025-05-22 16:20:46'),
+(18, 1, 'Generated bill for customer: Suchita Gadakh (Sale ID: 3)', '2025-05-22 16:22:08');
 
 -- --------------------------------------------------------
 
@@ -117,12 +127,8 @@ CREATE TABLE `products` (
 --
 
 INSERT INTO `products` (`id`, `name`, `sku`, `price`, `stock`, `low_stock_alert`, `tax_rate`, `created_at`, `description`) VALUES
-(1, 'Vivo T3 5G', 'a', 18000.00, 55, 10, 0.00, '2025-05-25 16:53:51', 'Ram-8/128 Camera-50+2+2'),
-(3, 'Samsung S25', 'aa', 80000.00, 19, 10, 0.00, '2025-05-25 16:55:36', 'Ram 16GB'),
-(4, 'realme 14x 5G', 'mamam', 16000.00, 50, 10, 0.00, '2025-05-25 16:56:55', '(Crystal Black, 128 GB)  (8 GB RAM)'),
-(5, 'OPPO A3 5G', 'asw', 14000.00, 30, 10, 0.00, '2025-05-25 16:57:45', '(Nebula Red, 128 GB)  (6 GB RAM)'),
-(6, 'Motorola G85 5G', 'ert', 16000.00, 20, 10, 0.00, '2025-05-25 16:58:34', '(Olive Green, 128 GB)  (8 GB RAM)'),
-(7, 'Boult X1 Wired Headset', 'sdf', 350.00, 198, 10, 0.00, '2025-05-25 17:00:06', 'with Dual Dynamic Drivers, BoomX Rich Bass, In-line Control, IPX5 Wired');
+(4, 'Redmi Note 13', 'a', 11000.00, 19, 10, 0.00, '2025-05-22 14:58:23', 'Ram 6/64'),
+(5, 'V TV', '1', 10000.00, 48, 10, 0.00, '2025-05-22 15:00:18', '32 inc');
 
 -- --------------------------------------------------------
 
@@ -157,12 +163,10 @@ CREATE TABLE `purchase_items` (
 --
 
 INSERT INTO `purchase_items` (`id`, `purchase_id`, `product_id`, `quantity`, `price`) VALUES
-(1, NULL, 1, 55, 18000.00),
-(3, NULL, 3, 20, 80000.00),
-(4, NULL, 4, 50, 16000.00),
-(5, NULL, 5, 30, 14000.00),
-(6, NULL, 6, 20, 16000.00),
-(7, NULL, 7, 200, 350.00);
+(1, NULL, 4, 50, 10000.00),
+(2, NULL, 5, 50, 10000.00),
+(3, NULL, 4, 10, 0.00),
+(4, NULL, 4, 10, 0.00);
 
 -- --------------------------------------------------------
 
@@ -185,7 +189,9 @@ CREATE TABLE `sales` (
 --
 
 INSERT INTO `sales` (`id`, `user_id`, `customer_name`, `customer_phone`, `total`, `discount`, `created_at`) VALUES
-(1, 1, 'Datta Wagh', '1234567890', 80700.00, 0.00, '2025-05-25 22:33:33');
+(1, 1, 'Anant Gadakh', '', 11000.00, 0.00, '2025-05-22 21:30:00'),
+(2, 1, 'Anant Gadakh', '', 32000.00, 0.00, '2025-05-22 21:50:46'),
+(3, 1, 'Suchita Gadakh', '', 32000.00, 0.00, '2025-05-22 21:52:08');
 
 -- --------------------------------------------------------
 
@@ -206,8 +212,11 @@ CREATE TABLE `sale_items` (
 --
 
 INSERT INTO `sale_items` (`id`, `sale_id`, `product_id`, `quantity`, `price`) VALUES
-(1, 1, 3, 1, 80000.00),
-(2, 1, 7, 2, 350.00);
+(1, 1, 4, 1, 11000.00),
+(2, 2, 5, 1, 10000.00),
+(3, 2, 4, 2, 11000.00),
+(4, 3, 4, 2, 11000.00),
+(5, 3, 5, 1, 10000.00);
 
 -- --------------------------------------------------------
 
@@ -244,9 +253,9 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `name`, `email`, `password`, `role`, `created_at`) VALUES
-(1, 'SHOP ADMIN', 'shopadmin@gmail.com', '$2y$10$Cd9a4RNb.H80ebt03ECRPe3xqXyW.25OIYyVbpRSKbWo6y6Bykz4u', 'Admin', '2025-05-25 16:49:05'),
-(2, 'Bunny Vivek', 'bunny@gmail.com', '$2y$10$olCBEoKgvIXkz2VPPwc9gOcrzXKGs.EpIAGcUQjgnlYbaV.VLCSFO', 'Worker', '2025-05-25 16:50:52'),
-(3, 'Sonu Nikam', 'sonu@gmail.com', '$2y$10$9F3vrAmJWnebONgB.b5tW.U9QUdOQrrrgFKcjbEYotfMy/pQDohBS', 'Worker', '2025-05-25 16:51:26');
+(1, 'Prashant Mama', 'prashant@gmail.com', '$2y$10$dVc3ZCBe5xMIP722SkJVkOnbhUxKQk4K15tK47KQCRI30V1p3/ZmO', 'Admin', '2025-05-14 08:33:17'),
+(2, 'Rahul Daji', 'rahul@gmail.com', '$2y$10$jJkFPcDFxx0iiFt1pHzlEeXyWGyysXRr8mKk/NP5eHMcWGnQ663Fa', 'Worker', '2025-05-14 08:34:16'),
+(3, 'Rahul Daji', 'rahul@gmail.in', '$2y$10$2P.UF44l905CbX.o1ArOIuj/O.mqdoe6yCMjOxtNuklmXa.xHaR/i', 'Worker', '2025-05-15 14:27:10');
 
 --
 -- Indexes for dumped tables
@@ -335,7 +344,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `activity_logs`
 --
 ALTER TABLE `activity_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- AUTO_INCREMENT for table `customers`
@@ -359,7 +368,7 @@ ALTER TABLE `notifications`
 -- AUTO_INCREMENT for table `products`
 --
 ALTER TABLE `products`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `purchases`
@@ -371,19 +380,19 @@ ALTER TABLE `purchases`
 -- AUTO_INCREMENT for table `purchase_items`
 --
 ALTER TABLE `purchase_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `sales`
 --
 ALTER TABLE `sales`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `sale_items`
 --
 ALTER TABLE `sale_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `udhar_book`
